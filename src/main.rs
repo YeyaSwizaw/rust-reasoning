@@ -149,6 +149,15 @@ fn parse_tokens(tokens: &Vec<Token>) -> Result<Expr, ParseError> {
     }
 }
 
+fn input_step() -> Result<String, ParseError> {
+    let mut args = args();
+    
+    match (args.next(), args.next()) {
+        (_, Some(s)) => Ok(s.to_string()),
+        (_, None) => Err(ParseError::NoInput)
+    }
+}
+
 fn tokenize_step(string: String) -> Result<Vec<Token>, ParseError> {
     println!("Input: {}", string);
     tokenize_string(&string)
@@ -160,14 +169,9 @@ fn parse_step(tokens: Vec<Token>) -> Result<Expr, ParseError> {
 }
 
 fn main() {
-    let mut args = args();
-    
-    let parse_result = match (args.next(), args.next()) {
-        (_, Some(s)) => Ok(s.to_string()),
-        (_, None) => Err(ParseError::NoInput)
-    }
-    .and_then(tokenize_step)
-    .and_then(parse_step);
+    let parse_result = input_step()
+        .and_then(tokenize_step)
+        .and_then(parse_step);
 
     match parse_result {
         Ok(ref expr) => println!("Parsed: {}", expr),
