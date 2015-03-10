@@ -19,3 +19,17 @@ impl Display for Expr {
         }
     }
 }
+
+impl Display for Vec<Expr> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result {
+        let mut first = true;
+        self.iter().fold(Ok(()), |acc, expr| acc.and_then(|_| {
+            if first {
+                first = false;
+                write!(fmt, "{}", expr)
+            } else {
+                write!(fmt, ", {}", expr)
+            }
+        }))
+    }
+}

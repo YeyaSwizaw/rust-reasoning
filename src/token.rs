@@ -38,6 +38,19 @@ impl Display for Vec<Token> {
     }
 }
 
+impl<'a> Display for Vec<&'a Token> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result {
+        let mut first = true;
+        self.iter().fold(Ok(()), |acc, token| acc.and_then(|_| {
+            if first {
+                first = false;
+                write!(fmt, "{}", token)
+            } else {
+                write!(fmt, ", {}", token)
+            }
+        }))
+    }
+}
 
 
 
