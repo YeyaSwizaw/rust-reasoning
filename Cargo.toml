@@ -1,0 +1,5 @@
+[package]
+
+name = "reasoning"
+version = "0.0.1"
+authors = ["Samuel Sleight <samuel.sleight@gmail.com>"]
