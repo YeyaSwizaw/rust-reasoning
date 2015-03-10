@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter, Result};
 
+#[derive(Clone)]
 pub enum Expr {
     Atom(String),
     Not(Box<Expr>),
