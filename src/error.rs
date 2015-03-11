@@ -6,6 +6,7 @@ pub enum ParseError {
     TokenizeError(String),
     NotError(Token),
     PopError,
+    CNFError,
 }
 
 impl Display for ParseError {
@@ -14,7 +15,8 @@ impl Display for ParseError {
             &ParseError::NoInput => write!(fmt, "Please provide a formula string"),
             &ParseError::TokenizeError(ref s)  => write!(fmt, "Unexpected character(s): {}", s),
             &ParseError::NotError(ref token) => write!(fmt, "Error popping 'Not' for: {}", token),
-            &ParseError::PopError => write!(fmt, "Expression stack not emptied")
+            &ParseError::PopError => write!(fmt, "Expression stack not emptied"),
+            &ParseError::CNFError => write!(fmt, "Error reducing to CNF")
         }
     }
 }

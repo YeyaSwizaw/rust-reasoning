@@ -7,6 +7,7 @@ pub enum Token {
     And,
     Or,
     IfThen,
+    IFF,
     LParen,
     RParen,
 }
@@ -19,6 +20,7 @@ impl Display for Token {
             &Token::And => write!(fmt, "And"),
             &Token::Or => write!(fmt, "Or"),
             &Token::IfThen => write!(fmt, "IfThen"),
+            &Token::IFF => write!(fmt, "IFF"),
             &Token::LParen => write!(fmt, "LParen"),
             &Token::RParen => write!(fmt, "RParen"),
         }
