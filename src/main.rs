@@ -10,6 +10,8 @@ use token::Token;
 use error::ParseError;
 
 use std::env::args;
+use std::collections::BTreeSet;
+use std::iter::FromIterator;
 
 fn tokenize_string(string: &str) -> Result<Vec<Token>, ParseError> {
     let mut tokens = Vec::new();
@@ -187,11 +189,13 @@ fn parse_step(tokens: Vec<Token>) -> Result<Expr, ParseError> {
     parse_tokens(&tokens)
 }
 
-fn cnf_step(expr: Expr) -> Result<Vec<Vec<Expr>>, ParseError> {
+fn cnf_step(expr: Expr) -> Result<BTreeSet<BTreeSet<Expr>>, ParseError> {
     println!("Expression: {}", expr);
 
     let mut oldexpr: Expr;
-    let mut newexpr = expr.clone();
+    let mut newexpr = Expr::Not(box expr);
+
+    println!("Negated: {}", newexpr);
 
     loop {
         oldexpr = newexpr.clone();
@@ -208,16 +212,97 @@ fn cnf_step(expr: Expr) -> Result<Vec<Vec<Expr>>, ParseError> {
     }
 }
 
+fn resolution_step(formula: BTreeSet<BTreeSet<Expr>>) -> Result<Vec<(BTreeSet<Expr>, BTreeSet<Expr>, BTreeSet<Expr>)>, ParseError> {
+    println!("Reduced: {}", formula);
+    println!("");
+
+    let mut form = formula.clone();
+    let mut resolved: BTreeSet<BTreeSet<Expr>> = BTreeSet::new();
+
+    let mut new;
+    let mut thing_done;
+
+    let mut steps = Vec::new();
+
+    loop {
+        form = BTreeSet::from_iter(form.iter().filter(|part| {
+            for atom in part.iter() {
+                let not = Expr::Not(box atom.clone()).reduce();
+                if part.contains(&not) {
+                    return false;
+                }
+            }
+
+            true
+        }).cloned());
+
+        new = BTreeSet::new();
+        thing_done = false;
+
+        for part in form.iter() {
+            if !resolved.contains(part) {
+                for atom in part.iter() {
+                    let not = Expr::Not(box atom.clone()).reduce();
+                    for part2 in form.iter() {
+                        if !resolved.contains(part2) && part2.contains(&not) {
+                            resolved.insert(part.clone());
+                            resolved.insert(part2.clone());
+
+                            let mut s = BTreeSet::new();
+                            s.insert(atom.clone());
+                            s.insert(not.clone());
+
+                            let p = BTreeSet::from_iter(part.union(part2).cloned());
+                            new = BTreeSet::from_iter(p.difference(&s).cloned());
+                            steps.push((part.clone(), part2.clone(), new.clone()));
+                            thing_done = true;
+                            break
+                        }
+                    }
+
+                    if !new.is_empty() {
+                        break
+                    }
+                }
+
+                if !new.is_empty() {
+                    break
+                }
+            }
+        }
+
+        if !thing_done {
+            return Ok(Vec::new())
+        }
+
+        
+        if new.is_empty() {
+            return Ok(steps)
+        }
+
+        form.insert(new);
+    }
+}
+
 fn main() {
     println!("");
 
-    let parse_result = input_step()
+    let result = input_step()
         .and_then(tokenize_step)
         .and_then(parse_step)
-        .and_then(cnf_step);
+        .and_then(cnf_step)
+        .and_then(resolution_step);
 
-    match parse_result {
-        Ok(ref expr) => println!("Reduced: {}", expr),
+    match result {
+        Ok(ref vec) => if vec.is_empty() {
+            println!("Unsatisfiable!")
+        } else {
+            println!("Satisfiable!");
+            for &(ref a, ref b, ref c) in vec.iter() {
+                println!("{{{}}} {{{}}} → {{{}}}", a, b, c)
+            }
+        },
+
         Err(ref err) => println!("{}", err)
     }
 

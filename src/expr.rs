@@ -1,9 +1,11 @@
-use std::fmt::{Display, Formatter};
 use std::fmt;
+use std::fmt::{Display, Formatter};
+use std::collections::BTreeSet;
+use std::iter::FromIterator;
 
 use error::ParseError;
 
-#[derive(Eq, Clone)]
+#[derive(Eq, PartialOrd, Ord, Clone)]
 pub enum Expr {
     Atom(String),
     Not(Box<Expr>),
@@ -45,17 +47,28 @@ impl Expr {
         }
     }
 
-    pub fn cnf_and(&self) -> Result<Vec<Vec<Expr>>, ParseError> {
+    pub fn cnf_and(&self) -> Result<BTreeSet<BTreeSet<Expr>>, ParseError> {
         match self {
-            &Expr::Atom(_) | &Expr::Not(box Expr::Atom(_)) => Ok(vec![vec![self.clone()]]),
+            &Expr::Atom(_) | &Expr::Not(box Expr::Atom(_)) => {
+                let mut outer = BTreeSet::new();
+                let mut inner = BTreeSet::new();
+                inner.insert(self.clone());
+                outer.insert(inner);
+                Ok(outer)
+            },
 
             &Expr::And(box ref e1, box ref e2) => match e1.cnf_and() {
-                Ok(ref mut v1) => e2.cnf_and().map(|ref mut v2| { v1.push_all(v2); v1.clone() }),
+                Ok(ref mut v1) => e2.cnf_and().map(|ref mut v2| BTreeSet::from_iter(v1.union(v2).cloned())),
                 Err(e) => Err(e)
             },
 
             &Expr::Or(_, _) => match self.cnf_or() {
-                Ok(v) => Ok(vec![v]),
+                Ok(v) => {
+                    let mut set = BTreeSet::new();
+                    set.insert(v);
+                    Ok(set)
+                },
+
                 Err(e) => Err(e)
             },
 
@@ -63,12 +76,16 @@ impl Expr {
         }
     }
 
-    pub fn cnf_or(&self) -> Result<Vec<Expr>, ParseError> {
+    pub fn cnf_or(&self) -> Result<BTreeSet<Expr>, ParseError> {
         match self {
-            &Expr::Atom(_) | &Expr::Not(box Expr::Atom(_)) => Ok(vec![self.clone()]),
+            &Expr::Atom(_) | &Expr::Not(box Expr::Atom(_)) => {
+                let mut set = BTreeSet::new();
+                set.insert(self.clone());
+                Ok(set)
+            },
 
             &Expr::Or(box ref e1, box ref e2) => match e1.cnf_or() {
-                Ok(ref mut v1) => e2.cnf_or().map(|ref v2| { v1.push_all(v2); v1.clone() }),
+                Ok(ref mut v1) => e2.cnf_or().map(|ref v2| BTreeSet::from_iter(v1.union(v2).cloned())),
                 Err(e) => Err(e)
             },
 
@@ -119,16 +136,30 @@ impl Display for Vec<Expr> {
     }
 }
 
-impl Display for Vec<Vec<Expr>> {
+impl Display for BTreeSet<Expr> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        let mut first = true;
+        self.iter().fold(Ok(()), |acc, expr| acc.and_then(|_| {
+            if first {
+                first = false;
+                write!(fmt, "{}", expr)
+            } else {
+                write!(fmt, ", {}", expr)
+            }
+        }))
+    }
+}
+
+impl Display for BTreeSet<BTreeSet<Expr>> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         let mut first = true;
 
-        write!(fmt, "{{").and_then(|_| self.iter().fold(Ok(()), |acc, vec| {
+        write!(fmt, "{{").and_then(|_| self.iter().fold(Ok(()), |acc, set| {
             if first {
                 first = false;
-                write!(fmt, "{{{}}}", vec)
+                write!(fmt, "{{{}}}", set)
             } else {
-                write!(fmt, ", {{{}}}", vec)
+                write!(fmt, ", {{{}}}", set)
             }
         }))
         .and_then(|_| write!(fmt, "}}"))
